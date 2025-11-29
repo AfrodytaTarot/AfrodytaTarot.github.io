@@ -485,6 +485,24 @@
             color: var(--dark-bg);
         }
         
+        /* Indicador de cantidad en servicios */
+        .service-quantity-indicator {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            border: 2px solid var(--dark-bg);
+        }
+        
         /* Sección de promociones */
         .promotions-section {
             background: linear-gradient(135deg, rgba(255, 142, 199, 0.1), rgba(232, 185, 208, 0.05));
@@ -1210,7 +1228,7 @@
             </div>
         </section>
 
-        <!-- Pestaña Servicios ACTUALIZADA CON BOTONES DE AGREGAR/QUITAR -->
+        <!-- Pestaña Servicios ACTUALIZADA CON INDICADORES DE CANTIDAD -->
         <section id="servicios" class="tab-content">
             <h2 class="section-title">NUESTROS SERVICIOS</h2>
             <p class="section-subtitle">Selecciona la categoría de lectura que necesitas</p>
@@ -1659,8 +1677,8 @@
             
             saveCart();
             updateCartDisplay();
+            updateServicesDisplay();
             
-            // Mostrar mensaje de confirmación
             showNotification(`✅ ${service.name} agregado al carrito`);
         }
 
@@ -1668,6 +1686,7 @@
             selectedServices = selectedServices.filter(item => item.id !== serviceId);
             saveCart();
             updateCartDisplay();
+            updateServicesDisplay();
         }
 
         function updateQuantity(serviceId, change) {
@@ -1679,6 +1698,7 @@
                 } else {
                     saveCart();
                     updateCartDisplay();
+                    updateServicesDisplay();
                 }
             }
         }
@@ -1734,13 +1754,48 @@
             totalAmount.textContent = total;
             cartTotal.style.display = 'block';
             
-            // Mostrar/ocultar sección de cumpleaños
             const birthdaySection = document.getElementById('birthdaySection');
             if (hasBirthdayReading) {
                 birthdaySection.classList.add('active');
             } else {
                 birthdaySection.classList.remove('active');
             }
+        }
+
+        function updateServicesDisplay() {
+            for (const category in servicesData) {
+                const container = document.querySelector(`#${category} .services-grid`);
+                if (container) {
+                    container.innerHTML = servicesData[category].map(service => {
+                        const quantity = getServiceQuantity(service.id);
+                        return `
+                            <div class="service-card" style="position: relative;">
+                                ${quantity > 0 ? `<div class="service-quantity-indicator">${quantity}</div>` : ''}
+                                <h3>${service.name}</h3>
+                                <div class="service-price">${service.price === 0 ? 'GRATIS' : `$${service.price}`}</div>
+                                <div class="service-description">
+                                    ${service.description}
+                                </div>
+                                <div class="service-actions">
+                                    <div class="quantity-controls">
+                                        <button class="quantity-btn" onclick="updateQuantity('${service.id}', -1)">-</button>
+                                        <span class="quantity-display">${quantity}</span>
+                                        <button class="quantity-btn" onclick="updateQuantity('${service.id}', 1)">+</button>
+                                    </div>
+                                    <button class="add-to-cart-btn" onclick="addToCart(${JSON.stringify(service).replace(/"/g, '&quot;')})">
+                                        ${quantity > 0 ? 'Actualizar' : 'Agregar'}
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+
+        function getServiceQuantity(serviceId) {
+            const service = selectedServices.find(item => item.id === serviceId);
+            return service ? service.quantity : 0;
         }
 
         function showNotification(message) {
@@ -1770,43 +1825,15 @@
             }, 3000);
         }
 
-        // Generar servicios dinámicamente
-        function generateServices() {
-            for (const category in servicesData) {
-                const container = document.querySelector(`#${category} .services-grid`);
-                if (container) {
-                    container.innerHTML = servicesData[category].map(service => `
-                        <div class="service-card">
-                            <h3>${service.name}</h3>
-                            <div class="service-price">${service.price === 0 ? 'GRATIS' : `$${service.price}`}</div>
-                            <div class="service-description">
-                                ${service.description}
-                            </div>
-                            <div class="service-actions">
-                                <div class="quantity-controls">
-                                    <button class="quantity-btn" onclick="updateQuantity('${service.id}', -1)">-</button>
-                                    <span class="quantity-display">${getServiceQuantity(service.id)}</span>
-                                    <button class="quantity-btn" onclick="updateQuantity('${service.id}', 1)">+</button>
-                                </div>
-                                <button class="add-to-cart-btn" onclick="addToCart(${JSON.stringify(service).replace(/"/g, '&quot;')})">
-                                    ${getServiceQuantity(service.id) > 0 ? 'Actualizar' : 'Agregar'}
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-        }
-
-        function getServiceQuantity(serviceId) {
-            const service = selectedServices.find(item => item.id === serviceId);
-            return service ? service.quantity : 0;
-        }
-
-        // Sistema de comentarios
+        // Sistema de comentarios - MODIFICADO PARA MOSTRAR SOLO PRIMER NOMBRE
         let comments = JSON.parse(localStorage.getItem('afrodyta_comments')) || [];
 
         function saveComment(comment) {
+            // Si no es anónimo, asegurarse de que solo guarde el primer nombre
+            if (!comment.isAnonymous && comment.author !== 'Anónimo') {
+                comment.author = comment.author.split(' ')[0];
+            }
+            
             comments.unshift(comment);
             localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
             displayComments();
@@ -1935,7 +1962,7 @@
         // Funcionalidad principal
         document.addEventListener('DOMContentLoaded', function() {
             // Generar servicios
-            generateServices();
+            updateServicesDisplay();
             
             // Mostrar comentarios existentes
             displayComments();
@@ -2050,7 +2077,7 @@
                 }
             });
 
-            // Manejo del formulario de comentarios
+            // Manejo del formulario de comentarios - MODIFICADO PARA SOLO PRIMER NOMBRE
             document.getElementById('commentForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -2064,8 +2091,11 @@
                     return;
                 }
 
+                // Obtener solo el primer nombre
+                const firstName = name.split(' ')[0];
+
                 const comment = {
-                    author: isAnonymous ? 'Anónimo' : name,
+                    author: isAnonymous ? 'Anónimo' : firstName,
                     text: text,
                     isAnonymous: isAnonymous,
                     date: new Date().toLocaleDateString('es-MX', {
@@ -2166,7 +2196,7 @@
                             selectedServices = [];
                             saveCart();
                             updateCartDisplay();
-                            generateServices();
+                            updateServicesDisplay();
                         }, 5000);
                         
                     }, function(error) {
