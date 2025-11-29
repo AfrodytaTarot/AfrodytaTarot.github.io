@@ -243,9 +243,8 @@
         let marker;
         let selectedLocation = null;
 
-        // CORRECCIÓN: Función simplificada para inicializar mapa
         function initMap() {
-            if (map) return; // Evitar inicializar múltiples veces
+            if (map) return;
             
             const madero = [22.2699999, -97.8363];
             
@@ -571,7 +570,7 @@
             return diffDays <= 3;
         }
 
-        // CORRECCIÓN COMPLETA: Funcionalidad principal
+        // CORRECCIÓN DEFINITIVA: Funcionalidad principal
         document.addEventListener('DOMContentLoaded', function() {
             // Generar servicios
             updateServicesDisplay();
@@ -582,9 +581,6 @@
             // Actualizar carrito
             updateCartDisplay();
             
-            // Verificar promociones automáticamente
-            checkPromotions();
-
             // Sistema de pestañas
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -757,6 +753,20 @@
                     }
                 }
                 
+                // CORRECCIÓN: Remover required de campos ocultos
+                const direccionInput = document.getElementById('direccionCompleta');
+                const codigoPostalInput = document.getElementById('codigoPostal');
+                
+                if (consultationTypeValue === 'online') {
+                    // Para consultas en línea, remover required de campos de domicilio
+                    direccionInput.removeAttribute('required');
+                    codigoPostalInput.removeAttribute('required');
+                } else {
+                    // Para domicilio, agregar required
+                    direccionInput.setAttribute('required', 'required');
+                    codigoPostalInput.setAttribute('required', 'required');
+                }
+                
                 // Preparar información del paquete
                 let packageInfo = 'SERVICIOS SELECCIONADOS:\n';
                 const subtotal = selectedServices.reduce((sum, service) => sum + (service.price * service.quantity), 0);
@@ -788,10 +798,10 @@
                 let totalConDomicilio = finalTotal;
                 
                 if (consultationTypeValue === 'domicilio') {
-                    const direccionInput = document.getElementById('direccionCompleta').value.trim();
-                    const codigoPostalInput = document.getElementById('codigoPostal').value.trim();
+                    const direccionValue = direccionInput.value.trim();
+                    const codigoPostalValue = codigoPostalInput.value.trim();
                     
-                    if (!direccionInput || !codigoPostalInput) {
+                    if (!direccionValue || !codigoPostalValue) {
                         alert('Para servicio a domicilio, por favor completa la dirección y código postal.');
                         return;
                     }
@@ -801,7 +811,7 @@
                         return;
                     }
                     
-                    direccion = `${direccionInput} | C.P. ${codigoPostalInput}`;
+                    direccion = `${direccionValue} | C.P. ${codigoPostalValue}`;
                     coordenadas = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
                     totalConDomicilio = finalTotal + 50;
                     
@@ -833,7 +843,7 @@
                 
                 console.log('Enviando correo con parámetros:', templateParams);
                 
-                // CORRECCIÓN: Envío simplificado y robusto
+                // Envío del correo
                 emailjs.send('service_z35hg3c', 'template_p8np16h', templateParams)
                     .then(function(response) {
                         console.log('SUCCESS!', response.status, response.text);
@@ -875,24 +885,6 @@
                         console.error('Detalles del error:', errorDetails);
                     });
             });
-
-            // Función para verificar promociones
-            function checkPromotions() {
-                const now = new Date();
-                const currentMonth = now.getMonth() + 1;
-                const currentDate = now.getDate();
-                
-                // Promoción Carta del Año (28 Dic - 4 Ene)
-                const isYearEndPromo = 
-                    (currentMonth === 12 && currentDate >= 28) || 
-                    (currentMonth === 1 && currentDate <= 4);
-                
-                if (isYearEndPromo) {
-                    document.getElementById('promoCartaAnio').classList.add('promotion-active');
-                    document.getElementById('badgeCartaAnio').textContent = 'ACTIVA';
-                    document.getElementById('textCartaAnio').innerHTML = '<strong style="color: #ffd700;">¡ACTIVA AHORA! Válido hasta el 4 de Enero.</strong>';
-                }
-            }
         });
 
         // Estilos CSS para las notificaciones
