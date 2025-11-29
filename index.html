@@ -720,6 +720,63 @@
             color: var(--primary-color);
         }
         
+        /* NUEVOS ESTILOS PARA MOSTRAR DESCUENTOS */
+        .discounts-section {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .discounts-section.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        .discount-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .discount-item:last-child {
+            border-bottom: none;
+        }
+        
+        .discount-description {
+            color: #ffd700;
+            font-family: "new-astro", sans-serif;
+            font-size: 0.9rem;
+        }
+        
+        .discount-amount {
+            color: #ffd700;
+            font-weight: bold;
+            font-family: "carilliantine", serif;
+        }
+        
+        .final-total {
+            text-align: right;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid #ffd700;
+            font-family: "carilliantine", serif;
+            font-size: 1.3rem;
+            color: #ffd700;
+        }
+        
+        .discounts-title {
+            color: #ffd700;
+            font-family: "carilliantine", serif;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+        
         /* Sección de domicilio */
         .domicilio-section {
             display: none;
@@ -1343,7 +1400,7 @@
             </div>
         </section>
 
-        <!-- Pestaña Agendar Cita ACTUALIZADA CON CARRITO -->
+        <!-- Pestaña Agendar Cita ACTUALIZADA CON CARRITO Y DESCUENTOS -->
         <section id="cita" class="tab-content">
             <h2 class="section-title">AGENDA TU CITA</h2>
             <p class="section-subtitle">Completa el formulario y nos pondremos en contacto contigo para confirmar tu sesión</p>
@@ -1356,8 +1413,18 @@
                         No hay servicios seleccionados. Agrega servicios desde la pestaña "Servicios".
                     </div>
                     <div id="servicesList"></div>
+                    
+                    <!-- NUEVA SECCIÓN PARA DESCUENTOS -->
+                    <div class="discounts-section" id="discountsSection">
+                        <div class="discounts-title">🎉 Descuentos Aplicados</div>
+                        <div id="discountsList"></div>
+                        <div class="final-total">
+                            Total Final: $<span id="finalTotalAmount">0</span>
+                        </div>
+                    </div>
+                    
                     <div class="cart-total" id="cartTotal" style="display: none;">
-                        Total: $<span id="totalAmount">0</span>
+                        Subtotal: $<span id="totalAmount">0</span>
                     </div>
                 </div>
                 
@@ -1711,6 +1778,63 @@
             localStorage.setItem('afrodyta_cart', JSON.stringify(selectedServices));
         }
 
+        // FUNCIÓN MODIFICADA: Aplicar promociones y mostrar descuentos
+        function applyPromotions(total) {
+            let finalTotal = total;
+            let discounts = [];
+            
+            // Promoción 3x2
+            const expensiveServices = selectedServices
+                .filter(service => service.price >= 250)
+                .sort((a, b) => b.price - a.price);
+            
+            if (expensiveServices.length >= 3) {
+                const freeService = expensiveServices[0];
+                const discount = Math.min(freeService.price * freeService.quantity, 180);
+                finalTotal -= discount;
+                discounts.push({
+                    description: `🎁 Promoción 3x2: ${freeService.name} gratis`,
+                    amount: discount
+                });
+            }
+            
+            // Promoción Lectura Gratis en compras > $500
+            if (total > 500 && discounts.length === 0) {
+                const freeReading = Math.min(180, total * 0.2);
+                finalTotal -= freeReading;
+                discounts.push({
+                    description: '🎁 Lectura gratis en compras mayores a $500',
+                    amount: freeReading
+                });
+            }
+            
+            // Mostrar descuentos en la interfaz
+            displayDiscounts(discounts, finalTotal);
+            
+            return finalTotal;
+        }
+
+        // NUEVA FUNCIÓN: Mostrar descuentos aplicados
+        function displayDiscounts(discounts, finalTotal) {
+            const discountsSection = document.getElementById('discountsSection');
+            const discountsList = document.getElementById('discountsList');
+            const finalTotalAmount = document.getElementById('finalTotalAmount');
+            
+            if (discounts.length > 0) {
+                discountsSection.classList.add('active');
+                discountsList.innerHTML = discounts.map(discount => `
+                    <div class="discount-item">
+                        <span class="discount-description">${discount.description}</span>
+                        <span class="discount-amount">-$${discount.amount}</span>
+                    </div>
+                `).join('');
+                finalTotalAmount.textContent = finalTotal;
+            } else {
+                discountsSection.classList.remove('active');
+            }
+        }
+
+        // FUNCIÓN MODIFICADA: Actualizar carrito para incluir descuentos
         function updateCartDisplay() {
             const servicesList = document.getElementById('servicesList');
             const emptyCart = document.getElementById('emptyCart');
@@ -1721,17 +1845,18 @@
                 emptyCart.style.display = 'block';
                 servicesList.innerHTML = '';
                 cartTotal.style.display = 'none';
+                document.getElementById('discountsSection').classList.remove('active');
                 return;
             }
             
             emptyCart.style.display = 'none';
             
-            let total = 0;
+            let subtotal = 0;
             let hasBirthdayReading = false;
             
             servicesList.innerHTML = selectedServices.map(service => {
                 const serviceTotal = service.price * service.quantity;
-                total += serviceTotal;
+                subtotal += serviceTotal;
                 
                 if (service.id === 'cumpleanos') {
                     hasBirthdayReading = true;
@@ -1755,11 +1880,11 @@
                 `;
             }).join('');
             
-            // APLICAR PROMOCIONES
-            total = applyPromotions(total);
-            
-            totalAmount.textContent = total;
+            totalAmount.textContent = subtotal;
             cartTotal.style.display = 'block';
+            
+            // APLICAR PROMOCIONES (esto actualizará los descuentos automáticamente)
+            const finalTotal = applyPromotions(subtotal);
             
             const birthdaySection = document.getElementById('birthdaySection');
             if (hasBirthdayReading) {
@@ -1767,34 +1892,6 @@
             } else {
                 birthdaySection.classList.remove('active');
             }
-        }
-
-        // NUEVA FUNCIÓN: Aplicar promociones automáticas
-        function applyPromotions(total) {
-            let finalTotal = total;
-            let discountApplied = false;
-            
-            // Promoción 3x2
-            const expensiveServices = selectedServices
-                .filter(service => service.price >= 250)
-                .sort((a, b) => b.price - a.price);
-            
-            if (expensiveServices.length >= 3) {
-                const freeService = expensiveServices[0];
-                const discount = Math.min(freeService.price * freeService.quantity, 180);
-                finalTotal -= discount;
-                discountApplied = true;
-                showNotification(`🎉 ¡Promoción 3x2 aplicada! Descuento de $${discount}`);
-            }
-            
-            // Promoción Lectura Gratis en compras > $500
-            if (total > 500 && !discountApplied) {
-                const freeReading = Math.min(180, total * 0.2); // Máximo $180 o 20% del total
-                finalTotal -= freeReading;
-                showNotification(`🎁 ¡Lectura gratis aplicada! Descuento de $${freeReading}`);
-            }
-            
-            return finalTotal;
         }
 
         function updateServicesDisplay() {
@@ -2152,7 +2249,7 @@
                 showNotification('¡Gracias por tu comentario! 🌟');
             });
 
-            // Manejo del formulario de citas - CORREGIDO PARA EL TEMPLATE DE EMAIL
+            // Manejo del formulario de citas - CORREGIDO PARA ENVÍO EN LÍNEA
             document.getElementById('appointmentForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -2164,7 +2261,14 @@
                 const name = document.getElementById('name').value;
                 const phone = document.getElementById('phone').value;
                 const email = document.getElementById('email').value;
-                const consultationType = document.querySelector('input[name="consultationType"]:checked').value;
+                const consultationType = document.querySelector('input[name="consultationType"]:checked');
+                
+                if (!consultationType) {
+                    alert('Por favor selecciona un tipo de consulta (domicilio o en línea).');
+                    return;
+                }
+                
+                const consultationTypeValue = consultationType.value;
                 const comments = document.getElementById('comments').value;
                 
                 // Validar lectura de cumpleaños
@@ -2179,9 +2283,35 @@
                 
                 let direccion = 'Consulta en línea (WhatsApp)';
                 let coordenadas = 'No aplica';
-                let packageInfo = 'Servicios seleccionados:\n';
+                let packageInfo = 'SERVICIOS SELECCIONADOS:\n';
                 
-                if (consultationType === 'domicilio') {
+                // Calcular totales
+                const subtotal = selectedServices.reduce((sum, service) => sum + (service.price * service.quantity), 0);
+                const finalTotal = applyPromotions(subtotal);
+                
+                // Construir información del paquete
+                selectedServices.forEach(service => {
+                    packageInfo += `• ${service.name} x${service.quantity} - $${service.price * service.quantity}\n`;
+                });
+                
+                packageInfo += `\nSUBTOTAL: $${subtotal}`;
+                
+                // Agregar información de descuentos si los hay
+                const discountsSection = document.getElementById('discountsSection');
+                if (discountsSection.classList.contains('active')) {
+                    const discountItems = document.querySelectorAll('.discount-item');
+                    discountItems.forEach(item => {
+                        const desc = item.querySelector('.discount-description').textContent;
+                        const amount = item.querySelector('.discount-amount').textContent;
+                        packageInfo += `\n${desc}: ${amount}`;
+                    });
+                    packageInfo += `\nTOTAL FINAL: $${finalTotal}`;
+                } else {
+                    packageInfo += `\nTOTAL: $${finalTotal}`;
+                }
+                
+                // Información de domicilio si aplica
+                if (consultationTypeValue === 'domicilio') {
                     if (!selectedLocation) {
                         alert('Por favor selecciona una ubicación en el mapa.');
                         return;
@@ -2190,36 +2320,35 @@
                     const codigoPostal = document.getElementById('codigoPostal').value;
                     coordenadas = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
                     direccion += ` | C.P. ${codigoPostal} | Coordenadas: ${coordenadas}`;
+                    
+                    // Agregar costo de domicilio al total
+                    packageInfo += `\n\n💫 SERVICIO A DOMICILIO: +$50`;
+                    packageInfo += `\nTOTAL CON DOMICILIO: $${finalTotal + 50}`;
                 }
-                
-                // Construir información del paquete
-                selectedServices.forEach(service => {
-                    packageInfo += `• ${service.name} x${service.quantity} - $${service.price * service.quantity}\n`;
-                });
                 
                 document.getElementById('loadingMessage').style.display = 'block';
                 document.getElementById('successMessage').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'none';
                 document.getElementById('submitButton').disabled = true;
                 
-                const total = selectedServices.reduce((sum, service) => sum + (service.price * service.quantity), 0);
-                const finalTotal = applyPromotions(total);
-                
                 const templateParams = {
                     from_name: name,
                     from_phone: phone,
                     from_email: email,
                     package: packageInfo,
-                    consultation_type: consultationType === 'domicilio' ? 'A domicilio (+$50 adicional)' : 'En línea (WhatsApp)',
+                    consultation_type: consultationTypeValue === 'domicilio' ? 'A domicilio (+$50 adicional)' : 'En línea (WhatsApp)',
                     direccion: direccion,
                     coordenadas: coordenadas,
                     comments: comments || 'No proporcionó comentarios adicionales',
                     date: new Date().toLocaleString('es-MX'),
-                    total: finalTotal
+                    total: consultationTypeValue === 'domicilio' ? finalTotal + 50 : finalTotal
                 };
+                
+                console.log('Enviando correo con parámetros:', templateParams);
                 
                 emailjs.send('service_z35hg3c', 'template_p8np16h', templateParams)
                     .then(function(response) {
+                        console.log('Correo enviado exitosamente:', response);
                         document.getElementById('loadingMessage').style.display = 'none';
                         document.getElementById('successMessage').style.display = 'block';
                         document.getElementById('submitButton').disabled = false;
@@ -2227,7 +2356,7 @@
                         setTimeout(() => {
                             e.target.reset();
                             document.getElementById('successMessage').style.display = 'none';
-                            domicilioSection.classList.remove('active');
+                            document.getElementById('domicilioSection').classList.remove('active');
                             document.getElementById('birthdaySection').classList.remove('active');
                             document.getElementById('locationInfo').style.display = 'none';
                             selectedLocation = null;
@@ -2240,10 +2369,19 @@
                         }, 5000);
                         
                     }, function(error) {
+                        console.error('Error al enviar email:', error);
                         document.getElementById('loadingMessage').style.display = 'none';
                         document.getElementById('errorMessage').style.display = 'block';
                         document.getElementById('submitButton').disabled = false;
-                        console.error('Error al enviar email:', error);
+                        
+                        // Mostrar más detalles del error
+                        let errorDetails = 'Error desconocido';
+                        if (error.text) {
+                            errorDetails = error.text;
+                        } else if (error.message) {
+                            errorDetails = error.message;
+                        }
+                        console.error('Detalles del error:', errorDetails);
                     });
             });
         });
