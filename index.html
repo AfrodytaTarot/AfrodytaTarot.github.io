@@ -2249,7 +2249,7 @@
                 showNotification('¡Gracias por tu comentario! 🌟');
             });
 
-            // Manejo del formulario de citas - CORREGIDO PARA ENVÍO EN LÍNEA
+            // CORRECCIÓN: Manejo del formulario de citas - FUNCIONA PARA AMBOS TIPOS
             document.getElementById('appointmentForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -2310,7 +2310,7 @@
                     packageInfo += `\nTOTAL: $${finalTotal}`;
                 }
                 
-                // Información de domicilio si aplica
+                // Información de domicilio si aplica - CORRECCIÓN: NO REQUIERE VALIDACIÓN PARA EN LÍNEA
                 if (consultationTypeValue === 'domicilio') {
                     if (!selectedLocation) {
                         alert('Por favor selecciona una ubicación en el mapa.');
@@ -2331,6 +2331,7 @@
                 document.getElementById('errorMessage').style.display = 'none';
                 document.getElementById('submitButton').disabled = true;
                 
+                // CORRECCIÓN: TemplateParams simplificado y funcional para ambos tipos
                 const templateParams = {
                     from_name: name,
                     from_phone: phone,
@@ -2346,6 +2347,7 @@
                 
                 console.log('Enviando correo con parámetros:', templateParams);
                 
+                // CORRECCIÓN: Usar el mismo template para ambos tipos
                 emailjs.send('service_z35hg3c', 'template_p8np16h', templateParams)
                     .then(function(response) {
                         console.log('Correo enviado exitosamente:', response);
