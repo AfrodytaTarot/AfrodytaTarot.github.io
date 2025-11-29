@@ -426,7 +426,7 @@
             font-weight: bold;
         }
         
-        /* Botones de agregar/quitar servicio */
+        /* Botones de agregar/quitar servicio - CORREGIDOS */
         .service-actions {
             display: flex;
             align-items: center;
@@ -436,9 +436,13 @@
         }
         
         .quantity-controls {
-            display: flex;
+            display: none; /* OCULTO INICIALMENTE */
             align-items: center;
             gap: 0.5rem;
+        }
+        
+        .quantity-controls.active {
+            display: flex; /* SE MUESTRA CUANDO HAY PRODUCTOS */
         }
         
         .quantity-btn {
@@ -1740,7 +1744,7 @@
                             <div class="service-item-price">$${service.price} x ${service.quantity} = $${serviceTotal}</div>
                         </div>
                         <div class="service-item-actions">
-                            <div class="quantity-controls">
+                            <div class="quantity-controls active">
                                 <button class="quantity-btn" onclick="updateQuantity('${service.id}', -1)">-</button>
                                 <span class="quantity-display">${service.quantity}</span>
                                 <button class="quantity-btn" onclick="updateQuantity('${service.id}', 1)">+</button>
@@ -1750,6 +1754,9 @@
                     </div>
                 `;
             }).join('');
+            
+            // APLICAR PROMOCIONES
+            total = applyPromotions(total);
             
             totalAmount.textContent = total;
             cartTotal.style.display = 'block';
@@ -1762,28 +1769,58 @@
             }
         }
 
+        // NUEVA FUNCIÓN: Aplicar promociones automáticas
+        function applyPromotions(total) {
+            let finalTotal = total;
+            let discountApplied = false;
+            
+            // Promoción 3x2
+            const expensiveServices = selectedServices
+                .filter(service => service.price >= 250)
+                .sort((a, b) => b.price - a.price);
+            
+            if (expensiveServices.length >= 3) {
+                const freeService = expensiveServices[0];
+                const discount = Math.min(freeService.price * freeService.quantity, 180);
+                finalTotal -= discount;
+                discountApplied = true;
+                showNotification(`🎉 ¡Promoción 3x2 aplicada! Descuento de $${discount}`);
+            }
+            
+            // Promoción Lectura Gratis en compras > $500
+            if (total > 500 && !discountApplied) {
+                const freeReading = Math.min(180, total * 0.2); // Máximo $180 o 20% del total
+                finalTotal -= freeReading;
+                showNotification(`🎁 ¡Lectura gratis aplicada! Descuento de $${freeReading}`);
+            }
+            
+            return finalTotal;
+        }
+
         function updateServicesDisplay() {
             for (const category in servicesData) {
                 const container = document.querySelector(`#${category} .services-grid`);
                 if (container) {
                     container.innerHTML = servicesData[category].map(service => {
                         const quantity = getServiceQuantity(service.id);
+                        const hasQuantity = quantity > 0;
+                        
                         return `
                             <div class="service-card" style="position: relative;">
-                                ${quantity > 0 ? `<div class="service-quantity-indicator">${quantity}</div>` : ''}
+                                ${hasQuantity ? `<div class="service-quantity-indicator">${quantity}</div>` : ''}
                                 <h3>${service.name}</h3>
                                 <div class="service-price">${service.price === 0 ? 'GRATIS' : `$${service.price}`}</div>
                                 <div class="service-description">
                                     ${service.description}
                                 </div>
                                 <div class="service-actions">
-                                    <div class="quantity-controls">
+                                    <div class="quantity-controls ${hasQuantity ? 'active' : ''}">
                                         <button class="quantity-btn" onclick="updateQuantity('${service.id}', -1)">-</button>
                                         <span class="quantity-display">${quantity}</span>
                                         <button class="quantity-btn" onclick="updateQuantity('${service.id}', 1)">+</button>
                                     </div>
                                     <button class="add-to-cart-btn" onclick="addToCart(${JSON.stringify(service).replace(/"/g, '&quot;')})">
-                                        ${quantity > 0 ? 'Actualizar' : 'Agregar'}
+                                        ${hasQuantity ? 'Actualizar' : 'Agregar'}
                                     </button>
                                 </div>
                             </div>
@@ -2115,7 +2152,7 @@
                 showNotification('¡Gracias por tu comentario! 🌟');
             });
 
-            // Manejo del formulario de citas
+            // Manejo del formulario de citas - CORREGIDO PARA EL TEMPLATE DE EMAIL
             document.getElementById('appointmentForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -2142,6 +2179,7 @@
                 
                 let direccion = 'Consulta en línea (WhatsApp)';
                 let coordenadas = 'No aplica';
+                let packageInfo = 'Servicios seleccionados:\n';
                 
                 if (consultationType === 'domicilio') {
                     if (!selectedLocation) {
@@ -2154,28 +2192,30 @@
                     direccion += ` | C.P. ${codigoPostal} | Coordenadas: ${coordenadas}`;
                 }
                 
+                // Construir información del paquete
+                selectedServices.forEach(service => {
+                    packageInfo += `• ${service.name} x${service.quantity} - $${service.price * service.quantity}\n`;
+                });
+                
                 document.getElementById('loadingMessage').style.display = 'block';
                 document.getElementById('successMessage').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'none';
                 document.getElementById('submitButton').disabled = true;
                 
-                const servicesList = selectedServices.map(service => 
-                    `${service.name} x${service.quantity} - $${service.price * service.quantity}`
-                ).join('\n');
-                
                 const total = selectedServices.reduce((sum, service) => sum + (service.price * service.quantity), 0);
+                const finalTotal = applyPromotions(total);
                 
                 const templateParams = {
                     from_name: name,
                     from_phone: phone,
                     from_email: email,
-                    services: servicesList,
-                    total: total,
+                    package: packageInfo,
                     consultation_type: consultationType === 'domicilio' ? 'A domicilio (+$50 adicional)' : 'En línea (WhatsApp)',
                     direccion: direccion,
                     coordenadas: coordenadas,
                     comments: comments || 'No proporcionó comentarios adicionales',
-                    date: new Date().toLocaleString('es-MX')
+                    date: new Date().toLocaleString('es-MX'),
+                    total: finalTotal
                 };
                 
                 emailjs.send('service_z35hg3c', 'template_p8np16h', templateParams)
@@ -2203,6 +2243,7 @@
                         document.getElementById('loadingMessage').style.display = 'none';
                         document.getElementById('errorMessage').style.display = 'block';
                         document.getElementById('submitButton').disabled = false;
+                        console.error('Error al enviar email:', error);
                     });
             });
         });
