@@ -1654,7 +1654,7 @@
 
     <script>
         // =============================================
-        // CONFIGURACIÓN GOOGLE SHEETS - ACTUALIZADO
+        // CONFIGURACIÓN GOOGLE SHEETS - SOLUCIÓN JSONP
         // =============================================
         const SHEET_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0FfyZyxVbg8kFmJbprhNwlTYDNFVHpSj8CMpWL0yVRQ2HvOui_h4QoIhIW0wOaz8/exec';
 
@@ -1698,95 +1698,105 @@
         };
 
         // =============================================
-        // SISTEMA DE COMENTARIOS MEJORADO
+        // SISTEMA DE COMENTARIOS MEJORADO CON JSONP
         // =============================================
         let comments = [];
 
-        // Función mejorada para cargar comentarios
-        async function loadComments() {
-            try {
-                const commentsList = document.getElementById('commentsList');
-                commentsList.innerHTML = '<div class="loading-comments">📡 Cargando comentarios...</div>';
-                
-                // Usar fetch con manejo de CORS mejorado
-                const timestamp = Date.now();
-                const response = await fetch(`${SHEET_SCRIPT_URL}?action=getComments&timestamp=${timestamp}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+        // Función para cargar comentarios usando JSONP
+        function loadComments() {
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = '<div class="loading-comments">📡 Cargando comentarios...</div>';
+            
+            // Primero cargar desde localStorage (instantáneo)
+            loadCommentsFromLocalStorage();
+            
+            // Luego intentar cargar desde Google Sheets usando JSONP
+            const script = document.createElement('script');
+            script.src = `${SHEET_SCRIPT_URL}?action=getComments&callback=handleCommentsResponse&timestamp=${Date.now()}`;
+            document.head.appendChild(script);
+            
+            // Timeout por si falla JSONP
+            setTimeout(() => {
+                if (document.head.contains(script)) {
+                    document.head.removeChild(script);
+                    console.log('JSONP timeout, usando localStorage');
                 }
+            }, 5000);
+        }
 
-                const data = await response.json();
-                
-                if (data && data.success) {
-                    comments = data.comments || [];
-                    displayComments();
-                    showNotification('✅ Comentarios cargados correctamente');
-                } else {
-                    throw new Error('Respuesta inválida del servidor');
-                }
-                
-            } catch (error) {
-                console.log('Fallback a localStorage:', error.message);
-                // Fallback automático a localStorage
-                loadCommentsFromLocalStorage();
+        // Función callback para JSONP
+        function handleCommentsResponse(data) {
+            if (data && data.success) {
+                comments = data.comments || [];
+                displayComments();
+                // Guardar en localStorage para futuras cargas rápidas
+                localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
+                showNotification('✅ Comentarios actualizados');
             }
         }
 
         // Cargar comentarios desde localStorage
         function loadCommentsFromLocalStorage() {
-            const commentsList = document.getElementById('commentsList');
-            comments = JSON.parse(localStorage.getItem('afrodyta_comments')) || [];
-            
-            if (comments.length === 0) {
-                commentsList.innerHTML = `
-                    <div class="empty-comments">
-                        🌟 Sé el primero en dejar un comentario
-                        <br><small>Los comentarios se guardarán localmente</small>
-                    </div>
-                `;
-            } else {
+            const localComments = JSON.parse(localStorage.getItem('afrodyta_comments')) || [];
+            if (localComments.length > 0) {
+                comments = localComments;
                 displayComments();
-                showNotification('📱 Comentarios cargados localmente');
             }
         }
 
-        // Función mejorada para guardar comentario
+        // Función para guardar comentario (usando formulario HTML)
         async function saveComment(comment) {
             try {
-                // Primero intentar con Google Sheets
+                // Crear un formulario temporal para enviar los datos
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = SHEET_SCRIPT_URL;
+                form.style.display = 'none';
+                
+                // Agregar campos al formulario
+                const fields = {
+                    'action': 'addComment',
+                    'author': comment.author,
+                    'text': comment.text,
+                    'phone': comment.phone,
+                    'isAnonymous': comment.isAnonymous,
+                    'location': comment.location,
+                    'date': comment.date,
+                    'timestamp': comment.timestamp
+                };
+                
+                Object.keys(fields).forEach(key => {
+                    const input = document.createElement('input');
+                    input.name = key;
+                    input.value = fields[key];
+                    form.appendChild(input);
+                });
+                
+                // Agregar formulario al DOM y enviar
+                document.body.appendChild(form);
+                
+                // Usar fetch con método POST simple
+                const formData = new FormData();
+                Object.keys(fields).forEach(key => {
+                    formData.append(key, fields[key]);
+                });
+                
                 const response = await fetch(SHEET_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'addComment',
-                        comment: comment
-                    })
+                    body: formData,
+                    mode: 'no-cors' // No-cors para evitar problemas CORS
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
                 
-                if (result && result.success) {
-                    return true;
-                } else {
-                    throw new Error('Server Error');
-                }
+                // Limpiar formulario
+                document.body.removeChild(form);
+                
+                // Como no podemos leer la respuesta en modo no-cors, asumimos éxito
+                // y guardamos en localStorage
+                saveCommentToLocalStorage(comment);
+                return true;
                 
             } catch (error) {
                 console.log('Guardando en localStorage:', error.message);
-                // Fallback a localStorage
                 return saveCommentToLocalStorage(comment);
             }
         }
@@ -1829,7 +1839,7 @@
             `).join('');
         }
 
-        // Función para obtener ubicación (mejorada)
+        // Función para obtener ubicación
         function getLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
@@ -1837,7 +1847,6 @@
                     return;
                 }
 
-                // Timeout más corto
                 const timeoutId = setTimeout(() => {
                     resolve('Ubicación no disponible');
                 }, 3000);
@@ -1867,7 +1876,7 @@
         }
 
         // =============================================
-        // CÓDIGO EXISTENTE (se mantiene TODO igual)
+        // CÓDIGO EXISTENTE DEL SISTEMA PRINCIPAL
         // =============================================
         
         // Carrito de servicios
@@ -2175,15 +2184,8 @@
             // Generar servicios
             updateServicesDisplay();
             
-            // Cargar comentarios (usa la versión mejorada)
-            loadCommentsFromLocalStorage(); // Cargar primero desde localStorage rápido
-            
-            // Luego intentar sincronizar con Google Sheets en segundo plano
-            setTimeout(() => {
-                loadComments().catch(() => {
-                    console.log('Google Sheets no disponible, usando localStorage');
-                });
-            }, 1000);
+            // Cargar comentarios usando JSONP
+            loadComments();
             
             // Actualizar carrito
             updateCartDisplay();
@@ -2332,22 +2334,14 @@
                     };
 
                     // Intentar guardar en Google Sheets
-                    const savedInCloud = await saveComment(comment);
+                    const saved = await saveComment(comment);
                     
-                    if (savedInCloud) {
-                        // Recargar comentarios desde el servidor
-                        await loadComments();
+                    if (saved) {
                         this.reset();
                         document.getElementById('isAnonymous').checked = false;
-                        showNotification('¡Gracias por tu comentario! 🌟 Se ha publicado globalmente.');
+                        showNotification('¡Gracias por tu comentario! 🌟');
                     } else {
-                        // Fallback a localStorage
-                        comments.unshift(comment);
-                        localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
-                        displayComments();
-                        this.reset();
-                        document.getElementById('isAnonymous').checked = false;
-                        showNotification('¡Gracias por tu comentario! 🌟 (Guardado localmente)');
+                        showNotification('❌ Error al guardar comentario');
                     }
                     
                 } catch (error) {
