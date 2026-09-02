@@ -8,7 +8,7 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-         {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -1731,7 +1731,7 @@
         // =============================================
         // TIPO DE CAMBIO MXN A USD
         // =============================================
-        const EXCHANGE_RATE = 19; // 1 MXN = 19 USD
+        const EXCHANGE_RATE = 19; // 1 USD = 19 MXN
 
         // =============================================
         // FUNCIONES DE CONVERSIÓN
@@ -1749,20 +1749,24 @@
         }
 
         // =============================================
-        // DATOS DE SERVICIOS
+        // DATOS DE SERVICIOS - ACTUALIZADOS
         // =============================================
         const servicesData = {
             basicas: [
-                { id: 'general', name: 'Lectura General', price: 135, description: 'Una visión completa de tu situación actual y energías que te rodean.' },
+                { id: 'general', name: 'Lectura General', price: 130, description: 'Una visión completa de tu situación actual y energías que te rodean.' },
                 { id: 'general_3p', name: 'General + 3 Preguntas', price: 180, description: 'Lectura general más respuestas específicas a 3 preguntas de tu interés.' },
                 { id: '1p', name: '1 Pregunta Específica', price: 50, description: 'Respuesta clara y directa a una pregunta concreta que tengas.' },
                 { id: '2p', name: '2 Preguntas', price: 65, description: 'Respuestas detalladas a dos preguntas importantes para ti.' },
                 { id: '3p', name: '3 Preguntas', price: 90, description: 'Análisis completo de tres áreas específicas de tu interés.' },
-                { id: 'semanal', name: 'Lectura Semanal', price: 185, description: 'Pronóstico energético para los próximos 7 días.' },
+                { id: 'semanal', name: 'Lectura Semanal', price: 190, description: 'Pronóstico energético para los próximos 7 días.' },
                 { id: 'mes', name: 'Lectura del Mes', price: 230, description: 'Visión completa de las energías del mes entrante.' },
                 { id: 'dia', name: 'Lectura del Día', price: 120, description: 'Guía energética para tomar las mejores decisiones hoy.' },
-                { id: 'anio', name: 'Lectura del Año', price: 450, description: 'Pronóstico anual completo con tendencias y oportunidades.' },
-                { id: 'amorosa', name: 'Lectura General Amorosa', price: 150, description: 'Enfoque especial en relaciones sentimentales y conexiones.' }
+                { id: 'anio', name: 'Lectura del Año', price: 480, description: 'Pronóstico anual completo con tendencias y oportunidades.' },
+                { id: 'amorosa', name: 'Lectura General Amorosa', price: 185, description: 'Enfoque especial en relaciones sentimentales y conexiones.' },
+                { id: 'herradura', name: 'Lectura de la Herradura', price: 160, description: 'Lectura que ayuda a la solución de un problema complicado, viendo posibles soluciones y cómo sería la situación al tomar esa decisión.' },
+                { id: 'trabajo', name: 'Lectura del Trabajo', price: 210, description: 'Lectura general extensa en el área laboral.' },
+                { id: 'economica', name: 'Lectura Económica', price: 80, description: 'Solo menos de 5 cartas: pasado, presente y futuro.' },
+                { id: 'personalizada', name: 'Lectura Personalizada-Extensa', price: 400, description: 'Lectura personalizada en base a tu situación de forma extensa.' }
             ],
             especiales: [
                 { id: 'escudo', name: 'Escudo de Compras', price: 100, description: 'Protección energética para tus compras e inversiones.' },
@@ -1793,134 +1797,134 @@
         let comments = [];
 
         // =============================
-// Cargar comentarios
-// =============================
-function loadComments() {
-  const commentsList = document.getElementById('commentsList');
-  commentsList.innerHTML = '<div class="loading-comments">📡 Cargando comentarios...</div>';
+        // Cargar comentarios
+        // =============================
+        function loadComments() {
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = '<div class="loading-comments">📡 Cargando comentarios...</div>';
 
-  // Cargar desde localStorage primero
-  loadCommentsFromLocalStorage();
+            // Cargar desde localStorage primero
+            loadCommentsFromLocalStorage();
 
-  // Intentar cargar desde Google Sheets vía JSONP
-  loadCommentsFromGoogleSheets();
-}
+            // Intentar cargar desde Google Sheets vía JSONP
+            loadCommentsFromGoogleSheets();
+        }
 
-// Cargar comentarios desde Google Sheets (JSONP)
-function loadCommentsFromGoogleSheets() {
-  const script = document.createElement("script");
-  script.src = SHEET_SCRIPT_URL + "?action=getComments&callback=handleComments&timestamp=" + Date.now();
-  document.body.appendChild(script);
-}
+        // Cargar comentarios desde Google Sheets (JSONP)
+        function loadCommentsFromGoogleSheets() {
+            const script = document.createElement("script");
+            script.src = SHEET_SCRIPT_URL + "?action=getComments&callback=handleComments&timestamp=" + Date.now();
+            document.body.appendChild(script);
+        }
 
-// Callback que recibe los comentarios desde Apps Script
-function handleComments(data) {
-  if (data && data.success && data.comments) {
-    comments = data.comments;
-    displayComments();
-    localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
-    console.log('✅ Comentarios cargados desde Google Sheets:', data.comments.length, 'comentarios');
-  } else if (data && data.error) {
-    console.log('❌ Error del servidor:', data.error);
-  }
-}
+        // Callback que recibe los comentarios desde Apps Script
+        function handleComments(data) {
+            if (data && data.success && data.comments) {
+                comments = data.comments;
+                displayComments();
+                localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
+                console.log('✅ Comentarios cargados desde Google Sheets:', data.comments.length, 'comentarios');
+            } else if (data && data.error) {
+                console.log('❌ Error del servidor:', data.error);
+            }
+        }
 
-// Cargar comentarios desde localStorage
-function loadCommentsFromLocalStorage() {
-  try {
-    const localComments = JSON.parse(localStorage.getItem('afrodyta_comments')) || [];
-    if (localComments.length > 0) {
-      comments = localComments;
-      displayComments();
-    }
-  } catch (error) {
-    console.error('Error cargando comentarios locales:', error);
-  }
-}
+        // Cargar comentarios desde localStorage
+        function loadCommentsFromLocalStorage() {
+            try {
+                const localComments = JSON.parse(localStorage.getItem('afrodyta_comments')) || [];
+                if (localComments.length > 0) {
+                    comments = localComments;
+                    displayComments();
+                }
+            } catch (error) {
+                console.error('Error cargando comentarios locales:', error);
+            }
+        }
 
-// =============================
-// Guardar comentario
-// =============================
-function saveComment(comment) {
-  return new Promise((resolve) => {
-    // Guardar en localStorage primero
-    const localSuccess = saveCommentToLocalStorage(comment);
-    if (!localSuccess) {
-      resolve(false);
-      return;
-    }
+        // =============================
+        // Guardar comentario
+        // =============================
+        function saveComment(comment) {
+            return new Promise((resolve) => {
+                // Guardar en localStorage primero
+                const localSuccess = saveCommentToLocalStorage(comment);
+                if (!localSuccess) {
+                    resolve(false);
+                    return;
+                }
 
-    // Guardar en Google Sheets vía JSONP
-    const script = document.createElement("script");
-    script.src = SHEET_SCRIPT_URL + "?action=addComment"
-      + "&author=" + encodeURIComponent(comment.author)
-      + "&text=" + encodeURIComponent(comment.text)
-      + "&phone=" + encodeURIComponent(comment.phone)
-      + "&isAnonymous=" + encodeURIComponent(comment.isAnonymous)
-      + "&location=" + encodeURIComponent(comment.location)
-      + "&date=" + encodeURIComponent(comment.date)
-      + "&timestamp=" + encodeURIComponent(comment.timestamp)
-      + "&callback=handleAddComment";
-    document.body.appendChild(script);
+                // Guardar en Google Sheets vía JSONP
+                const script = document.createElement("script");
+                script.src = SHEET_SCRIPT_URL + "?action=addComment"
+                    + "&author=" + encodeURIComponent(comment.author)
+                    + "&text=" + encodeURIComponent(comment.text)
+                    + "&phone=" + encodeURIComponent(comment.phone)
+                    + "&isAnonymous=" + encodeURIComponent(comment.isAnonymous)
+                    + "&location=" + encodeURIComponent(comment.location)
+                    + "&date=" + encodeURIComponent(comment.date)
+                    + "&timestamp=" + encodeURIComponent(comment.timestamp)
+                    + "&callback=handleAddComment";
+                document.body.appendChild(script);
 
-    resolve(true);
-  });
-}
+                resolve(true);
+            });
+        }
 
-// Callback al guardar comentario
-function handleAddComment(data) {
-  if (data && data.success) {
-    console.log('✅ Comentario guardado en Google Sheets');
-    loadCommentsFromGoogleSheets(); // recargar lista
-  } else {
-    console.log('📝 Comentario guardado en localStorage (fallback servidor)');
-  }
-}
+        // Callback al guardar comentario
+        function handleAddComment(data) {
+            if (data && data.success) {
+                console.log('✅ Comentario guardado en Google Sheets');
+                loadCommentsFromGoogleSheets(); // recargar lista
+            } else {
+                console.log('📝 Comentario guardado en localStorage (fallback servidor)');
+            }
+        }
 
-// Guardar comentario en localStorage
-function saveCommentToLocalStorage(comment) {
-  try {
-    comments.unshift(comment);
-    localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
-    displayComments();
-    return true;
-  } catch (error) {
-    console.error('Error guardando en localStorage:', error);
-    return false;
-  }
-}
+        // Guardar comentario en localStorage
+        function saveCommentToLocalStorage(comment) {
+            try {
+                comments.unshift(comment);
+                localStorage.setItem('afrodyta_comments', JSON.stringify(comments));
+                displayComments();
+                return true;
+            } catch (error) {
+                console.error('Error guardando en localStorage:', error);
+                return false;
+            }
+        }
 
-// =============================
-// Mostrar comentarios
-// =============================
-function displayComments() {
-  const commentsList = document.getElementById('commentsList');
+        // =============================
+        // Mostrar comentarios
+        // =============================
+        function displayComments() {
+            const commentsList = document.getElementById('commentsList');
 
-  if (comments.length === 0) {
-    commentsList.innerHTML = '<div class="empty-comments">🌟 Sé el primero en dejar un comentario</div>';
-    return;
-  }
+            if (comments.length === 0) {
+                commentsList.innerHTML = '<div class="empty-comments">🌟 Sé el primero en dejar un comentario</div>';
+                return;
+            }
 
-  commentsList.innerHTML = comments.map(comment => `
-    <div class="comment-card">
-      <div class="comment-header">
-        <div>
-          <span class="comment-author">${comment.author}</span>
-          ${comment.isAnonymous ? '<span class="anonymous-badge">Anónimo</span>' : ''}
-          ${comment.location && comment.location !== 'Ubicación no disponible' ? 
-            `<span class="location-badge">📍 ${comment.location}</span>` : ''}
-        </div>
-        <div class="comment-date">${comment.date}</div>
-      </div>
-      <div class="comment-text">${comment.text}</div>
-    </div>
-  `).join('');
-}
+            commentsList.innerHTML = comments.map(comment => `
+                <div class="comment-card">
+                    <div class="comment-header">
+                        <div>
+                            <span class="comment-author">${comment.author}</span>
+                            ${comment.isAnonymous ? '<span class="anonymous-badge">Anónimo</span>' : ''}
+                            ${comment.location && comment.location !== 'Ubicación no disponible' ? 
+                                `<span class="location-badge">📍 ${comment.location}</span>` : ''}
+                        </div>
+                        <div class="comment-date">${comment.date}</div>
+                    </div>
+                    <div class="comment-text">${comment.text}</div>
+                </div>
+            `).join('');
+        }
 
-// =============================
-// Inicializar al cargar la página
-// =============================
-document.addEventListener("DOMContentLoaded", loadComments);
+        // =============================
+        // Inicializar al cargar la página
+        // =============================
+        document.addEventListener("DOMContentLoaded", loadComments);
 
 
         // =============================================
